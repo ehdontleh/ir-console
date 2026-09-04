@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IR Duty Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10161a;
+    --panel:#1a2226;
+    --panel-2:#202a2e;
+    --panel-3:#141b1e;
+    --border:#2b363b;
+    --border-soft:#232d31;
+    --text:#e8e4d8;
+    --text-dim:#8c9a9d;
+    --text-faint:#5e6c6f;
+    --amber:#d6a756;
+    --amber-dim:#8a6f3f;
+    --olive:#83a176;
+    --brick:#be5f4c;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  ::selection{background:var(--amber-dim);color:var(--bg);}
+  button{font-family:var(--sans);}
+  input,select,textarea{
+    font-family:var(--sans);
+    background:var(--panel-3);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:3px;
+    padding:8px 10px;
+    font-size:13.5px;
+    width:100%;
+    outline:none;
+  }
+  input:focus,select:focus,textarea:focus{
+    border-color:var(--amber-dim);
+    box-shadow:0 0 0 2px rgba(214,167,86,0.12);
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:4px;
+  }
+  .field{margin-bottom:12px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom:1px solid var(--border);
+    background:var(--panel-3);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{
+    font-family:var(--mono);
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:0.02em;
+    color:var(--amber);
+  }
+  .brand .sub{color:var(--text-faint);font-size:12.5px;}
+  .status-strip{display:flex;align-items:center;gap:18px;font-size:12.5px;color:var(--text-dim);}
+  .status-item{display:flex;align-items:center;gap:7px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;}
+  .dot.live{background:var(--amber);animation:pulse 1.8s ease-in-out infinite;}
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(214,167,86,0.5);}
+    50%{box-shadow:0 0 0 5px rgba(214,167,86,0);}
+  }
+  .clock{font-family:var(--mono);color:var(--text);}
+
+  /* ---------- layout ---------- */
+  main{
+    max-width:1320px;
+    margin:0 auto;
+    padding:24px 20px 60px;
+    display:grid;
+    grid-template-columns:400px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width:920px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .panel-head{
+    padding:13px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .panel-head h2{
+    margin:0;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .panel-head .hint{font-size:11.5px;color:var(--text-faint);}
+  .panel-body{padding:16px;}
+
+  /* ---------- template chooser ---------- */
+  .tpl-choice{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .tpl-option{
+    border:1px solid var(--border);
+    background:var(--panel-3);
+    border-radius:3px;
+    padding:11px 12px;
+    cursor:pointer;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+  }
+  .tpl-option:hover{border-color:var(--border-soft);background:var(--panel-2);}
+  .tpl-option.active{border-color:var(--amber-dim);background:rgba(214,167,86,0.06);}
+  .tpl-option input{width:auto;margin-top:3px;accent-color:var(--amber);}
+  .tpl-option .t-title{font-weight:500;font-size:13.5px;color:var(--text);}
+  .tpl-option .t-desc{font-size:12px;color:var(--text-dim);margin-top:2px;}
+
+  /* ---------- person search ---------- */
+  .person-search{position:relative;}
+  .person-results{
+    position:absolute;
+    top:calc(100% + 4px);
+    left:0;right:0;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:3px;
+    max-height:190px;
+    overflow-y:auto;
+    z-index:10;
+  }
+  .person-row{
+    padding:8px 10px;
+    cursor:pointer;
+    border-bottom:1px solid var(--border-soft);
+    font-size:13px;
+  }
+  .person-row:last-child{border-bottom:none;}
+  .person-row:hover{background:var(--panel-3);}
+  .person-row .p-name{color:var(--text);}
+  .person-row .p-meta{color:var(--text-faint);font-size:11.5px;margin-top:1px;}
+  .person-empty{padding:10px;color:var(--text-faint);font-size:12.5px;}
+  .person-picked{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel-3);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:9px 10px;
+    font-size:13px;
+  }
+  .person-picked .p-name{color:var(--olive);}
+  .person-picked button{
+    background:none;border:none;color:var(--text-faint);
+    cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;
+  }
+  .person-picked button:hover{color:var(--brick);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    border:1px solid var(--border);
+    background:var(--panel-2);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:3px;
+    font-size:13px;
+    cursor:pointer;
+    font-weight:500;
+  }
+  .btn:hover{border-color:var(--border-soft);background:var(--panel-3);}
+  .btn-primary{
+    background:var(--amber);
+    border-color:var(--amber);
+    color:#1a1400;
+  }
+  .btn-primary:hover{background:#e2b768;border-color:#e2b768;}
+  .btn-primary:disabled{background:var(--amber-dim);border-color:var(--amber-dim);color:#3a3020;cursor:not-allowed;}
+  .btn-ghost{background:none;border-color:var(--border);}
+  .btn-danger{border-color:var(--brick);color:var(--brick);background:none;}
+  .btn-danger:hover{background:rgba(190,95,76,0.1);}
+  .btn-block{width:100%;}
+  .btn-row{display:flex;gap:8px;margin-top:14px;}
+  .btn-row .btn{flex:1;}
+  fieldset{border:none;padding:0;margin:0;}
+  legend{padding:0;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
+  .radio-line{display:flex;gap:14px;margin-bottom:2px;}
+  .radio-opt{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;}
+  .radio-opt input{width:auto;accent-color:var(--amber);}
+
+  /* ---------- empty state ---------- */
+  .empty{
+    padding:34px 16px;
+    text-align:center;
+    color:var(--text-faint);
+  }
+  .empty .glyph{font-family:var(--mono);font-size:22px;color:var(--border-soft);margin-bottom:10px;}
+  .empty p{margin:0;font-size:13px;line-height:1.6;max-width:340px;margin:0 auto;}
+
+  /* ---------- report readout ---------- */
+  .readout-wrap{
+    background:var(--panel-3);
+    border-left:2px solid var(--border);
+    transition:border-color 0.4s ease;
+  }
+  .readout-wrap.flash{border-left-color:var(--amber);}
+  .readout{
+    font-family:var(--mono);
+    font-size:12.8px;
+    line-height:1.75;
+    white-space:pre-wrap;
+    word-break:break-word;
+    padding:20px 22px;
+    color:#d9d4c4;
+    max-height:560px;
+    overflow-y:auto;
+  }
+  .readout .ph{color:var(--text-faint);}
+  .case-meta{
+    display:flex;
+    gap:18px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    font-size:12px;
+    color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  .case-meta b{color:var(--text);font-weight:500;}
+  .readout-toolbar{
+    display:flex;
+    justify-content:flex-end;
+    padding:10px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
+  }
+  .readout-toolbar .btn{padding:6px 12px;font-size:12px;}
+  .readout-toolbar .btn.copied{border-color:var(--olive);color:var(--olive);}
+
+  /* ---------- update form ---------- */
+  .update-block{border-top:1px solid var(--border);}
+  .update-toggle{
+    padding:13px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    user-select:none;
+  }
+  .update-toggle h2{margin:0;font-size:13px;font-weight:600;}
+  .update-toggle .chevron{color:var(--text-faint);transition:transform 0.2s ease;font-size:12px;}
+  .update-toggle.open .chevron{transform:rotate(90deg);}
+  .update-form{padding:0 16px 16px;}
+
+  .update-log{padding:0 16px 16px;}
+  .update-item{
+    font-size:12px;
+    color:var(--text-dim);
+    padding:8px 0;
+    border-top:1px solid var(--border-soft);
+  }
+  .update-item:first-child{border-top:none;}
+  .update-item b{color:var(--text);font-weight:500;}
+
+  /* ---------- records ---------- */
+  .records-panel{margin-top:20px;}
+  .record-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 16px;
+    border-top:1px solid var(--border-soft);
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .record-row:first-child{border-top:none;}
+  .record-info{font-size:12.5px;color:var(--text-dim);}
+  .record-info b{color:var(--text);font-weight:500;font-family:var(--mono);}
+  .record-actions{display:flex;gap:8px;}
+  .record-actions .btn{padding:6px 11px;font-size:12px;}
+
+  /* ---------- settings ---------- */
+  details.settings{
+    margin-top:20px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+  }
+  details.settings summary{
+    padding:13px 16px;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    list-style:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  details.settings summary::-webkit-details-marker{display:none;}
+  details.settings summary .chevron{color:var(--text-faint);font-size:12px;}
+  details.settings[open] summary .chevron{transform:rotate(90deg);display:inline-block;}
+  .settings-body{padding:0 16px 16px;border-top:1px solid var(--border);}
+  .settings-body .field{margin-top:14px;}
+  .settings-sub{font-size:12px;color:var(--text-faint);margin:14px 0 6px;line-height:1.6;}
+  .roster-count{font-size:12px;color:var(--text-dim);margin-top:8px;}
+  .file-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .file-row input[type=file]{
+    flex:1;
+    padding:6px 8px;
+    font-size:12px;
+  }
+  .toast{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%) translateY(8px);
+    background:var(--panel-2);
+    border:1px solid var(--amber-dim);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:4px;
+    font-size:12.5px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">IR // DUTY CONSOLE</span>
+    <span class="sub">incident report drafting</span>
+  </div>
+  <div class="status-strip">
+    <div class="status-item"><span class="dot" id="statusDot"></span><span id="statusText">No active case</span></div>
+    <div class="status-item"><span id="recordCount">0</span> archived</div>
+    <div class="status-item clock" id="clock">--:-- --/--/--</div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: control panel -->
+  <div id="controlPanel"></div>
+
+  <!-- RIGHT: report readout + records -->
+  <div>
+    <div class="panel">
+      <div class="case-meta" id="caseMeta" style="display:none;"></div>
+      <div class="readout-toolbar" id="readoutToolbar" style="display:none;">
+        <button class="btn" id="copyReportBtn">Copy report</button>
+      </div>
+      <div class="readout-wrap" id="readoutWrap">
+        <div class="readout" id="readout"></div>
+      </div>
+      <div class="update-block" id="updateBlock" style="display:none;"></div>
+    </div>
+
+    <div class="panel records-panel">
+      <div class="panel-head">
+        <h2>Case log</h2>
+        <span class="hint">finalised reports, this device</span>
+      </div>
+      <div id="recordsList"></div>
+    </div>
+
+    <details class="settings" id="settingsDetails">
+      <summary>Roster, locations &amp; signature <span class="chevron">›</span></summary>
+      <div class="settings-body">
+        <p class="settings-sub">Personnel and location lists live only in this browser. Upload your unit's CSVs to replace the sample data below — nothing is sent anywhere.</p>
+
+        <div class="field">
+          <label>Personnel CSV (columns: nric, pes, name)</label>
+          <div class="file-row">
+            <input type="file" id="rosterFile" accept=".csv,text/csv">
+            <button class="btn" id="rosterClear">Reset to sample</button>
+          </div>
+          <div class="roster-count" id="rosterCount"></div>
+        </div>
+
+        <div class="field">
+          <label>Locations CSV (columns: short, long)</label>
+          <div class="file-row">
+            <input type="file" id="locationFile" accept=".csv,text/csv">
+            <button class="btn" id="locationClear">Reset to default</button>
+          </div>
+          <div class="roster-count" id="locationCount"></div>
+        </div>
+
+        <p class="settings-sub" style="margin-top:18px;">Signature block used at the foot of every report.</p>
+        <div class="field">
+          <label>Name &amp; rank</label>
+          <input type="text" id="setName" placeholder="e.g. 2LT TAN WEI MING">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Unit / appointment</label>
+            <input type="text" id="setUnit" placeholder="e.g. PC 1, OPFOR.">
+          </div>
+          <div class="field">
+            <label>HP number</label>
+            <input type="text" id="setPhone" placeholder="e.g. 90441234">
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const SAMPLE_ROSTER = [
+  {nric:'T0000001A', pes:'PES A',  name:'3SG SAMPLE ALPHA TAN'},
+  {nric:'T0000002B', pes:'PES B1', name:'LCP SAMPLE BRAVO LIM'},
+  {nric:'T0000003C', pes:'PES A',  name:'PTE SAMPLE CHARLIE NG'},
+];
+
+const DEFAULT_LOCATIONS = [
+  {short:'CGH A&E',   long:'Changi General Hospital (CGH) A&E'},
+  {short:'KTPH A&E',  long:'Khoo Teck Puat Hospital (KTPH) A&E'},
+  {short:'NUH A&E',   long:'National University Hospital (NUH) A&E'},
+  {short:'NTFGH A&E', long:'Ng Teng Fong General Hospital (NTFGH) A&E'},
+  {short:'SKH A&E',   long:'Sengkang General Hospital (SKH) A&E'},
+  {short:'SGH A&E',   long:'Singapore General Hospital (SGH) A&E'},
+  {short:'TTSH A&E',  long:'Tan Tock Seng Hospital (TTSH) A&E'},
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let roster = SAMPLE_ROSTER.slice();
+let locations = DEFAULT_LOCATIONS.slice();
+let reporter = {name:'', unit:'', phone:''};
+let records = [];
+let nextCaseNo = 1;
+
+let activeCase = null;
+// activeCase = { template, incidentNo, initial, updates:[{label,text}], startedAt }
+
+let draft = { template:1, person:null, personQuery:'' };
+let updateFormOpen = false;
+let updateType = null;
+
+/* ============================================================
+   STORAGE
+   ============================================================ */
+async function loadAll(){
+  try{
+    const r = await window.storage.get('roster');
+    if(r && r.value) roster = JSON.parse(r.value);
+  }catch(e){}
+  try{
+    const l = await window.storage.get('locations');
+    if(l && l.value) locations = JSON.parse(l.value);
+  }catch(e){}
+  try{
+    const s = await window.storage.get('reporter');
+    if(s && s.value) reporter = JSON.parse(s.value);
+  }catch(e){}
+  try{
+    const rec = await window.storage.get('records');
+    if(rec && rec.value) records = JSON.parse(rec.value);
+  }catch(e){}
+  try{
+    const n = await window.storage.get('next-case-no');
+    if(n && n.value) nextCaseNo = JSON.parse(n.value);
+  }catch(e){}
+  try{
+    const ac = await window.storage.get('active-case');
+    if(ac && ac.value) activeCase = JSON.parse(ac.value);
+  }catch(e){}
+}
+async function save(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), false); }
+  catch(e){ console.error('storage failed', key, e); }
+}
+function saveRoster(){ save('roster', roster); }
+function saveLocations(){ save('locations', locations); }
+function saveReporter(){ save('reporter', reporter); }
+function saveRecords(){ save('records', records); }
+function saveNextCaseNo(){ save('next-case-no', nextCaseNo); }
+function saveActiveCase(){ save('active-case', activeCase); }
+
+/* ============================================================
+   TIME HELPERS (Asia/Singapore)
+   ============================================================ */
+function sgParts(date){
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone:'Asia/Singapore', day:'2-digit', month:'2-digit', year:'2-digit',
+    hour:'2-digit', minute:'2-digit', hour12:false
+  });
+  const parts = {};
+  fmt.formatToParts(date).forEach(p => parts[p.type] = p.value);
+  return parts;
+}
+function ddmmyy(date=new Date()){
+  const p = sgParts(date);
+  return `${p.day}${p.month}${p.year}`;
+}
+function hhmm(date=new Date()){
+  const p = sgParts(date);
+  return `${p.hour}${p.minute}`;
+}
+function calcMcEndDate(mcDays, from=new Date()){
+  const days = parseInt(mcDays,10) || 1;
+  const d = new Date(from.getTime() + (days-1) * 86400000);
+  return ddmmyy(d);
+}
+function tickClock(){
+  const p = sgParts(new Date());
+  const el = document.getElementById('clock');
+  if(el) el.textContent = `${p.hour}:${p.minute}  ${p.day}/${p.month}/${p.year}  SGT`;
+}
+setInterval(tickClock, 15000);
+
+/* ============================================================
+   REPORT TEMPLATES
+   ============================================================ */
+function personLine(p){
+  return p ? `${p.nric}, ${p.name}, ${p.pes}` : '[serviceman not selected]';
+}
+function signatureBlock(){
+  const name = reporter.name || '[reporter name not set]';
+  const unit = reporter.unit || '[unit not set]';
+  const phone = reporter.phone || '[phone not set]';
+  return `${name}\n${unit}\nHP NO: ${phone}`;
+}
+function num(n){
+  // Word-joiner (U+2060) after the period stops WhatsApp's own
+  // auto numbered-list formatting from re-triggering on this line —
+  // it's invisible, so "1. " still reads exactly as "1. ".
+  return `${n}.\u2060 `;
+}
+function reportSkeleton(body){
+  return `${num(1)}Type of Incident:\nNon-Training Related\n\n${num(2)}Serviceman Involved\n${body.person}\n\n${num(3)}Date & Time of Incident:\n${body.dt}\n\n${num(4)}Location of Incident:\n${body.location}\n\n${num(5)}Brief Description of the incident:\n${body.description}\n\n${num(6)}Updates\nNIL.\n\n${num(7)}Follow up Actions:\nUnit will continue to monitor and provide updates.\n\n${num(8)}NOK Informed: Y\n\n${num(9)}HHQ/GSOC Informed:\na. ITI DOO:\nb. Whatsapp 9 DOO:\nc. Call 9 DIV DOO:\nd. GSOC verbal:\ne. ASIS Report:\n\n${num(10)}Reported by:\n${signatureBlock()}`;
+}
+function buildTemplate1(f){
+  const d = ddmmyy(), t = hhmm();
+  const header = `*Incident No. 0${f.incidentNo} from OPFOR on ${d}*`;
+  const loc = locations[f.locationIndex];
+  const body = {
+    person: personLine(f.person),
+    dt: `${d}/ ${t}hrs`,
+    location: loc ? loc.long : '[location not selected]',
+    description: `On ${d} at around ${t}hrs, serviceman reported sick at ${loc ? loc.short : '[location]'} for ${f.symptoms || '[symptoms]'}.\n\nServiceman is currently waiting to be assessed by the doctor.`
+  };
+  return `${header}\n\n${reportSkeleton(body)}`;
+}
+function buildTemplate2(f){
+  const d = ddmmyy(), t = hhmm();
+  const header = `*Incident No. 0${f.incidentNo} from OPFOR on ${d}*`;
+  const body = {
+    person: personLine(f.person),
+    dt: `${d}/ ${t}hrs`,
+    location: 'Jurong Camp Medical Centre (JCMC)',
+    description: `On ${d} at around ${f.time || '[time]'}hrs, serviceman reported sick at JCMC for symptoms of ${f.symptoms || '[symptoms]'}.\n\nOn ${d} at ${t}hrs, the JCMC MO assessed the serviceman, and gave him an initial diagnosis of ${f.diagnosis || '[diagnosis]'} and deemed it necessary for ${f.urgency} send out via SAF ambulance to Ng Teng Fong General Hospital (NTFGH) A&E for further assessment.\n\nServiceman is accompanied by ${f.commander || '[commander]'} (HP: +65 ${f.commanderPhone || '[phone]'}).\n\nOn ${d} at ${f.ambulanceTime || '[time]'}hrs, serviceman boarded the SAF ambulance and is en route to NTFGH A&E.`
+  };
+  return `${header}\n\n${reportSkeleton(body)}`;
+}
+function updateText(type, f){
+  const d = ddmmyy(), t = hhmm();
+  if(type===1){
+    return `On ${d} at ${t}hrs, serviceman arrived at NTFGH A&E and is currently waiting to be seen by the doctor.`;
+  }
+  if(type===2){
+    return `On ${d} at ${t}hrs, serviceman was reviewed by the doctor, and diagnosed with ${f.diagnosis}. Serviceman was issued with ${f.mcDays} days MC (${d} - ${calcMcEndDate(f.mcDays)}).\n\n*This serves as the final update.*`;
+  }
+  if(type===3){
+    return `On ${d} at ${t}hrs, ${f.testName} Test was administered on the serviceman, and no abnormalities were found.`;
+  }
+  if(type===4){
+    return `On ${d} at ${t}hrs, serviceman was reviewed by the doctor, and diagnosed with ${f.diagnosis}.\n\nServiceman was issued with ${f.mcDays} days MC (${d} - ${calcMcEndDate(f.mcDays)}), and is scheduled for a follow-up appointment with an ${f.specialist} specialist at a later date that has yet to be confirmed.\n\n*This serves as the final update.*`;
+  }
+  if(type===5){
+    return `On ${d} at ${t}hrs, serviceman was diagnosed with ${f.diagnosis}.\n\nServiceman was given ${f.mcDays} days MC (${d} - ${calcMcEndDate(f.mcDays)}), and is also scheduled for another follow-up appointment with a ${f.specialist} specialist on ${f.specialistDate} at ${f.specialistTime}hrs.\n\n*This serves as the final update.*`;
+  }
+  return '';
+}
+const UPDATE_LABELS = {
+  1:'Arrived at NTFGH',
+  2:'Final update',
+  3:'Test administered',
+  4:'Final update — follow-up date TBC',
+  5:'Final update — follow-up date confirmed',
+};
+
+function currentReportText(){
+  if(!activeCase) return '';
+  let text = activeCase.updates.length===0
+    ? activeCase.initial
+    : activeCase.initial.replace('NIL.', activeCase.updates.map(u=>u.text).join('\n\n'));
+  if(activeCase.followUpClosed){
+    text = text.replace('Unit will continue to monitor and provide updates.', 'NIL.');
+  }
+  return text;
+}
+
+/* ============================================================
+   CSV IMPORT
+   ============================================================ */
+function parseCsv(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+  if(lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  return lines.slice(1).map(line=>{
+    const cols = line.split(',');
+    const row = {};
+    headers.forEach((h,i)=> row[h] = (cols[i]||'').trim());
+    return row;
+  });
+}
+
+/* ============================================================
+   RENDER: header status
+   ============================================================ */
+function renderStatus(){
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if(activeCase){
+    dot.classList.add('live');
+    text.textContent = `Case in progress — incident 0${activeCase.incidentNo}`;
+  } else {
+    dot.classList.remove('live');
+    text.textContent = 'No active case';
+  }
+  document.getElementById('recordCount').textContent = records.length;
+}
+
+/* ============================================================
+   RENDER: control panel
+   ============================================================ */
+function renderControlPanel(){
+  const el = document.getElementById('controlPanel');
+  if(!activeCase){
+    el.innerHTML = newCaseFormHtml();
+    bindNewCaseForm();
+  } else {
+    el.innerHTML = activeCaseControlHtml();
+    bindActiveCaseControls();
+  }
+}
+
+function newCaseFormHtml(){
+  const isT1 = draft.template===1;
+  const isT2 = draft.template===2;
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>New case</h2><span class="hint">step 1 of 2</span></div>
+    <div class="panel-body">
+      <div class="tpl-choice">
+        <label class="tpl-option ${isT1?'active':''}">
+          <input type="radio" name="tpl" value="1" ${isT1?'checked':''}>
+          <div>
+            <div class="t-title">Report sick at A&amp;E</div>
+            <div class="t-desc">Initial report — serviceman reporting sick at a civilian hospital.</div>
+          </div>
+        </label>
+        <label class="tpl-option ${isT2?'active':''}">
+          <input type="radio" name="tpl" value="2" ${isT2?'checked':''}>
+          <div>
+            <div class="t-title">Send-out from JCMC</div>
+            <div class="t-desc">Serviceman assessed at JCMC, sent out to NTFGH by ambulance.</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="field">
+        <label>Incident number</label>
+        <input type="text" id="f_incidentNo" placeholder="e.g. ${nextCaseNo}" value="${draft.incidentNo||''}">
+      </div>
+
+      <div class="field">
+        <label>Serviceman involved</label>
+        ${personPickerHtml()}
+      </div>
+
+      ${isT1 ? template1FieldsHtml() : template2FieldsHtml()}
+
+      <div class="btn-row">
+        <button class="btn btn-primary btn-block" id="generateBtn">Generate report</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function personPickerHtml(){
+  if(draft.person){
+    return `
+    <div class="person-picked">
+      <div>
+        <div class="p-name">${escapeHtml(draft.person.name)}</div>
+        <div class="p-meta">${escapeHtml(draft.person.nric)} · ${escapeHtml(draft.person.pes)}</div>
+      </div>
+      <button id="personClear" title="Clear">✕</button>
+    </div>`;
+  }
+  return `
+    <div class="person-search">
+      <input type="text" id="personQuery" placeholder="Type a name to search the roster…" value="${escapeHtml(draft.personQuery||'')}" autocomplete="off">
+      <div id="personResults"></div>
+    </div>`;
+}
+
+function template1FieldsHtml(){
+  return `
+    <div class="field">
+      <label>Location</label>
+      <select id="f_location">
+        <option value="">Select location…</option>
+        ${locations.map((l,i)=>`<option value="${i}" ${draft.locationIndex==i?'selected':''}>${escapeHtml(l.long)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Symptoms reported</label>
+      <input type="text" id="f_symptoms" placeholder="e.g. abdominal pain" value="${escapeHtml(draft.symptoms||'')}">
+    </div>`;
+}
+
+function template2FieldsHtml(){
+  return `
+    <div class="field">
+      <label>Time reported sick at JCMC</label>
+      <input type="text" id="f_time" placeholder="e.g. 1430" value="${escapeHtml(draft.time||'')}">
+    </div>
+    <div class="field">
+      <label>Symptoms reported</label>
+      <input type="text" id="f_symptoms" placeholder="e.g. chest pain" value="${escapeHtml(draft.symptoms||'')}">
+    </div>
+    <div class="field">
+      <label>MO's initial diagnosis</label>
+      <input type="text" id="f_diagnosis" placeholder="e.g. suspected appendicitis" value="${escapeHtml(draft.diagnosis||'')}">
+    </div>
+    <div class="field">
+      <fieldset>
+        <legend>Send-out priority</legend>
+        <div class="radio-line">
+          <label class="radio-opt"><input type="radio" name="urgency" value="an urgent" ${draft.urgency==='an urgent'?'checked':''}> Urgent</label>
+          <label class="radio-opt"><input type="radio" name="urgency" value="a non-urgent" ${draft.urgency==='a non-urgent'?'checked':''}> Non-urgent</label>
+        </div>
+      </fieldset>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Accompanying commander</label>
+        <input type="text" id="f_commander" placeholder="e.g. 3SG TAN WEI MING" value="${escapeHtml(draft.commander||'')}">
+      </div>
+      <div class="field">
+        <label>Commander's HP (+65)</label>
+        <input type="text" id="f_commanderPhone" placeholder="9XXX XXXX" value="${escapeHtml(draft.commanderPhone||'')}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Time serviceman boarded ambulance</label>
+      <input type="text" id="f_ambulanceTime" placeholder="e.g. 1510" value="${escapeHtml(draft.ambulanceTime||'')}">
+    </div>`;
+}
+
+function activeCaseControlHtml(){
+  return `
+  <div class="panel">
+    <div class="panel-head"><h2>Case actions</h2><span class="hint">incident 0${activeCase.incidentNo}</span></div>
+    <div class="panel-body">
+      <p style="margin:0 0 14px;font-size:12.5px;color:var(--text-dim);line-height:1.6;">
+        The report on the right updates live. Log rolling updates as they come in, then finalise once the case is closed.
+      </p>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn btn-block" id="addUpdateBtn">Add update</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-block" id="followUpBtn">${activeCase.followUpClosed ? 'Reopen follow up action' : 'Close follow up action → NIL.'}</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-block" id="finaliseBtn">Finalise &amp; archive</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger btn-block" id="discardBtn">Discard case</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindNewCaseForm(){
+  document.querySelectorAll('input[name="tpl"]').forEach(r=>{
+    r.addEventListener('change', e=>{ draft.template = parseInt(e.target.value,10); renderControlPanel(); });
+  });
+  const incidentEl = document.getElementById('f_incidentNo');
+  incidentEl.addEventListener('input', e=> draft.incidentNo = e.target.value);
+
+  if(draft.person){
+    document.getElementById('personClear').addEventListener('click', ()=>{
+      draft.person = null; draft.personQuery=''; renderControlPanel();
+    });
+  } else {
+    const q = document.getElementById('personQuery');
+    q.addEventListener('input', e=>{
+      draft.personQuery = e.target.value;
+      renderPersonResults();
+    });
+    q.addEventListener('focus', renderPersonResults);
+    document.addEventListener('click', outsidePersonClick, {once:false});
+  }
+
+  if(draft.template===1){
+    document.getElementById('f_location').addEventListener('change', e=> draft.locationIndex = e.target.value);
+    document.getElementById('f_symptoms').addEventListener('input', e=> draft.symptoms = e.target.value);
+  } else {
+    document.getElementById('f_time').addEventListener('input', e=> draft.time = e.target.value);
+    document.getElementById('f_symptoms').addEventListener('input', e=> draft.symptoms = e.target.value);
+    document.getElementById('f_diagnosis').addEventListener('input', e=> draft.diagnosis = e.target.value);
+    document.querySelectorAll('input[name="urgency"]').forEach(r=>{
+      r.addEventListener('change', e=> draft.urgency = e.target.value);
+    });
+    document.getElementById('f_commander').addEventListener('input', e=> draft.commander = e.target.value);
+    document.getElementById('f_commanderPhone').addEventListener('input', e=> draft.commanderPhone = e.target.value);
+    document.getElementById('f_ambulanceTime').addEventListener('input', e=> draft.ambulanceTime = e.target.value);
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', onGenerate);
+}
+
+function outsidePersonClick(e){
+  const wrap = document.querySelector('.person-search');
+  if(wrap && !wrap.contains(e.target)){
+    const res = document.getElementById('personResults');
+    if(res) res.innerHTML='';
+  }
+}
+
+function renderPersonResults(){
+  const box = document.getElementById('personResults');
+  if(!box) return;
+  const q = (draft.personQuery||'').trim().toLowerCase();
+  if(!q){ box.innerHTML=''; return; }
+  const matches = roster.filter(p => p.name.toLowerCase().includes(q));
+  if(matches.length===0){
+    box.innerHTML = `<div class="person-results"><div class="person-empty">No match in roster for "${escapeHtml(draft.personQuery)}"</div></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="person-results">${matches.slice(0,8).map(p=>`
+    <div class="person-row" data-nric="${escapeHtml(p.nric)}">
+      <div class="p-name">${escapeHtml(p.name)}</div>
+      <div class="p-meta">${escapeHtml(p.nric)} · ${escapeHtml(p.pes)}</div>
+    </div>`).join('')}</div>`;
+  box.querySelectorAll('.person-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const nric = row.getAttribute('data-nric');
+      draft.person = roster.find(p=>p.nric===nric);
+      renderControlPanel();
+    });
+  });
+}
+
+function onGenerate(){
+  if(!draft.incidentNo){ toast('Enter an incident number.'); return; }
+  if(!draft.person){ toast('Select the serviceman involved.'); return; }
+  if(draft.template===1 && (draft.locationIndex===undefined || draft.locationIndex==='')){
+    toast('Select a location.'); return;
+  }
+  const f = {
+    incidentNo: draft.incidentNo,
+    person: draft.person,
+    locationIndex: draft.locationIndex,
+    symptoms: draft.symptoms,
+    time: draft.time,
+    diagnosis: draft.diagnosis,
+    urgency: draft.urgency || 'a non-urgent',
+    commander: draft.commander,
+    commanderPhone: draft.commanderPhone,
+    ambulanceTime: draft.ambulanceTime,
+  };
+  const initial = draft.template===1 ? buildTemplate1(f) : buildTemplate2(f);
+  activeCase = {
+    template: draft.template,
+    incidentNo: draft.incidentNo,
+    initial,
+    updates: [],
+    startedAt: new Date().toISOString(),
+  };
+  draft = { template:1, person:null, personQuery:'' };
+  saveActiveCase();
+  renderAll(true);
+}
+
+function bindActiveCaseControls(){
+  document.getElementById('addUpdateBtn').addEventListener('click', ()=>{
+    updateFormOpen = true; updateType = null; renderReport();
+  });
+  document.getElementById('followUpBtn').addEventListener('click', ()=>{
+    activeCase.followUpClosed = !activeCase.followUpClosed;
+    saveActiveCase();
+    renderControlPanel();
+    renderReport();
+  });
+  document.getElementById('finaliseBtn').addEventListener('click', onFinalise);
+  document.getElementById('discardBtn').addEventListener('click', ()=>{
+    if(confirm('Discard this case? This cannot be undone.')){
+      activeCase = null; updateFormOpen=false; saveActiveCase(); renderAll(true);
+    }
+  });
+}
+
+/* ============================================================
+   RENDER: report readout + updates
+   ============================================================ */
+function renderReport(){
+  const wrap = document.getElementById('readoutWrap');
+  const box = document.getElementById('readout');
+  const metaBox = document.getElementById('caseMeta');
+  const toolbar = document.getElementById('readoutToolbar');
+  const updateBlock = document.getElementById('updateBlock');
+
+  if(!activeCase){
+    metaBox.style.display='none';
+    toolbar.style.display='none';
+    updateBlock.style.display='none';
+    box.innerHTML = `<div class="empty">
+        <div class="glyph">// —— //</div>
+        <p>No active case. Start a new report on the left — the drafted message will appear here as you fill it in.</p>
+      </div>`;
+    return;
+  }
+
+  metaBox.style.display='flex';
+  metaBox.innerHTML = `
+    <span>Template <b>${activeCase.template===1?'A&E initial report':'JCMC send-out'}</b></span>
+    <span>Updates logged <b>${activeCase.updates.length}</b></span>
+    <span>Started <b>${new Date(activeCase.startedAt).toLocaleString('en-SG',{hour12:false})}</b></span>`;
+
+  toolbar.style.display='flex';
+  const copyBtn = document.getElementById('copyReportBtn');
+  copyBtn.textContent = 'Copy report';
+  copyBtn.classList.remove('copied');
+  copyBtn.onclick = ()=> copyToClipboard(currentReportText(), copyBtn);
+
+  box.textContent = currentReportText();
+  wrap.classList.add('flash');
+  setTimeout(()=>wrap.classList.remove('flash'), 500);
+
+  updateBlock.style.display='block';
+  updateBlock.innerHTML = `
+    <div class="update-toggle ${updateFormOpen?'open':''}" id="updateToggle">
+      <h2>Log an update</h2>
+      <span class="chevron">›</span>
+    </div>
+    ${updateFormOpen ? `<div class="update-form">${updateFormHtml()}</div>` : ''}
+    ${activeCase.updates.length ? `<div class="update-log">${activeCase.updates.map((u,i)=>`
+      <div class="update-item"><b>${i+1}. ${u.label}</b><br>${escapeHtml(u.text).slice(0,140)}${u.text.length>140?'…':''}</div>
+    `).join('')}</div>` : ''}
+  `;
+  document.getElementById('updateToggle').addEventListener('click', ()=>{
+    updateFormOpen = !updateFormOpen; updateType=null; renderReport();
+  });
+  if(updateFormOpen) bindUpdateForm();
+}
+
+function updateFormHtml(){
+  return `
+    <div class="field">
+      <label>Update type</label>
+      <select id="u_type">
+        <option value="">Select…</option>
+        <option value="1" ${updateType==1?'selected':''}>Arrived at NTFGH</option>
+        <option value="2" ${updateType==2?'selected':''}>Final update</option>
+        <option value="3" ${updateType==3?'selected':''}>Test administered</option>
+        <option value="4" ${updateType==4?'selected':''}>Final update — follow-up date TBC</option>
+        <option value="5" ${updateType==5?'selected':''}>Final update — follow-up date confirmed</option>
+      </select>
+    </div>
+    <div id="u_fields">${updateFieldsHtml(updateType)}</div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="u_submit">Add to report</button>
+    </div>`;
+}
+
+function updateFieldsHtml(type){
+  if(type===2){
+    return `
+      <div class="field"><label>Final diagnosis</label><input type="text" id="u_diagnosis"></div>
+      <div class="field"><label>MC days</label><input type="number" min="1" id="u_mcDays"></div>`;
+  }
+  if(type===3){
+    return `<div class="field"><label>Test administered</label><input type="text" id="u_testName" placeholder="e.g. a rapid antigen"></div>`;
+  }
+  if(type===4){
+    return `
+      <div class="field"><label>Final diagnosis</label><input type="text" id="u_diagnosis"></div>
+      <div class="field"><label>MC days</label><input type="number" min="1" id="u_mcDays"></div>
+      <div class="field"><label>Specialist type</label><input type="text" id="u_specialist" placeholder="e.g. orthopaedic"></div>`;
+  }
+  if(type===5){
+    return `
+      <div class="field"><label>Final diagnosis</label><input type="text" id="u_diagnosis"></div>
+      <div class="field"><label>MC days</label><input type="number" min="1" id="u_mcDays"></div>
+      <div class="field-row">
+        <div class="field"><label>Specialist type</label><input type="text" id="u_specialist" placeholder="e.g. orthopaedic"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Appointment date</label><input type="text" id="u_specialistDate" placeholder="DDMMYY"></div>
+        <div class="field"><label>Appointment time</label><input type="text" id="u_specialistTime" placeholder="HHMM"></div>
+      </div>`;
+  }
+  return '';
+}
+
+function bindUpdateForm(){
+  document.getElementById('u_type').addEventListener('change', e=>{
+    updateType = e.target.value ? parseInt(e.target.value,10) : null;
+    document.getElementById('u_fields').innerHTML = updateFieldsHtml(updateType);
+  });
+  document.getElementById('u_submit').addEventListener('click', ()=>{
+    if(!updateType){ toast('Select an update type.'); return; }
+    const f = {};
+    if(updateType===2 || updateType===4 || updateType===5){
+      f.diagnosis = valOf('u_diagnosis');
+      f.mcDays = valOf('u_mcDays');
+      if(!f.diagnosis || !f.mcDays){ toast('Fill in diagnosis and MC days.'); return; }
+    }
+    if(updateType===3){
+      f.testName = valOf('u_testName');
+      if(!f.testName){ toast('Enter the test administered.'); return; }
+    }
+    if(updateType===4 || updateType===5){
+      f.specialist = valOf('u_specialist');
+      if(!f.specialist){ toast('Enter the specialist type.'); return; }
+    }
+    if(updateType===5){
+      f.specialistDate = valOf('u_specialistDate');
+      f.specialistTime = valOf('u_specialistTime');
+      if(!f.specialistDate || !f.specialistTime){ toast('Enter the appointment date and time.'); return; }
+    }
+    const text = updateText(updateType, f);
+    activeCase.updates.push({label: UPDATE_LABELS[updateType], text});
+    updateFormOpen = false; updateType = null;
+    saveActiveCase();
+    renderReport();
+    renderStatus();
+  });
+}
+function valOf(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function onFinalise(){
+  const text = currentReportText().replace(
+    'Unit will continue to monitor and provide updates.', 'NIL.'
+  );
+  const record = {
+    id: 'IR_' + String(nextCaseNo).padStart(3,'0'),
+    incidentNo: activeCase.incidentNo,
+    template: activeCase.template,
+    finalisedAt: new Date().toISOString(),
+    text,
+  };
+  records.unshift(record);
+  nextCaseNo += 1;
+  activeCase = null;
+  updateFormOpen = false;
+  saveRecords(); saveNextCaseNo(); saveActiveCase();
+  renderAll(true);
+  toast(`${record.id} archived and downloaded.`);
+  downloadRecord(record);
+}
+
+/* ============================================================
+   RENDER: records
+   ============================================================ */
+function renderRecords(){
+  const el = document.getElementById('recordsList');
+  if(records.length===0){
+    el.innerHTML = `<div class="empty"><p>Finalised reports will be listed here, most recent first.</p></div>`;
+    return;
+  }
+  el.innerHTML = records.map((r,i)=>`
+    <div class="record-row">
+      <div class="record-info"><b>${r.id}</b> — incident 0${escapeHtml(r.incidentNo)} · ${r.template===1?'A&E initial report':'JCMC send-out'} · ${new Date(r.finalisedAt).toLocaleString('en-SG',{hour12:false})}</div>
+      <div class="record-actions">
+        <button class="btn" data-view="${i}">View</button>
+        <button class="btn" data-copy="${i}">Copy</button>
+        <button class="btn" data-dl="${i}">Download</button>
+        <button class="btn btn-danger" data-del="${i}">Delete</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-view]').forEach(b=>{
+    b.addEventListener('click', ()=> alert(records[+b.dataset.view].text));
+  });
+  el.querySelectorAll('[data-copy]').forEach(b=>{
+    b.addEventListener('click', ()=> copyToClipboard(records[+b.dataset.copy].text, b));
+  });
+  el.querySelectorAll('[data-dl]').forEach(b=>{
+    b.addEventListener('click', ()=> downloadRecord(records[+b.dataset.dl]));
+  });
+  el.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(confirm('Delete this archived report?')){
+        records.splice(+b.dataset.del,1);
+        saveRecords(); renderRecords(); renderStatus();
+      }
+    });
+  });
+}
+async function copyToClipboard(text, btn){
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    toast('Report copied — paste it straight into WhatsApp.');
+    if(btn){
+      const original = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1800);
+    }
+  }catch(e){
+    toast('Copy failed — select and copy the text manually.');
+  }
+}
+function downloadRecord(record){
+  const blob = new Blob([record.text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${record.id}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   RENDER: settings
+   ============================================================ */
+function renderSettings(){
+  document.getElementById('rosterCount').textContent = `${roster.length} personnel loaded.`;
+  document.getElementById('locationCount').textContent = `${locations.length} locations loaded.`;
+  document.getElementById('setName').value = reporter.name||'';
+  document.getElementById('setUnit').value = reporter.unit||'';
+  document.getElementById('setPhone').value = reporter.phone||'';
+}
+function bindSettings(){
+  document.getElementById('rosterFile').addEventListener('change', async e=>{
+    const file = e.target.files[0]; if(!file) return;
+    const text = await file.text();
+    const rows = parseCsv(text).map(r=>({nric:r.nric||'', pes:r.pes||'', name:r.name||''})).filter(r=>r.name);
+    if(rows.length===0){ toast('No valid rows found in that CSV.'); return; }
+    roster = rows; saveRoster(); renderSettings();
+    toast(`Loaded ${rows.length} personnel.`);
+    e.target.value='';
+  });
+  document.getElementById('rosterClear').addEventListener('click', ()=>{
+    roster = SAMPLE_ROSTER.slice(); saveRoster(); renderSettings();
+    toast('Roster reset to sample data.');
+  });
+  document.getElementById('locationFile').addEventListener('change', async e=>{
+    const file = e.target.files[0]; if(!file) return;
+    const text = await file.text();
+    const rows = parseCsv(text).map(r=>({short:r.short||'', long:r.long||''})).filter(r=>r.short);
+    if(rows.length===0){ toast('No valid rows found in that CSV.'); return; }
+    locations = rows; saveLocations(); renderSettings();
+    toast(`Loaded ${rows.length} locations.`);
+    e.target.value='';
+  });
+  document.getElementById('locationClear').addEventListener('click', ()=>{
+    locations = DEFAULT_LOCATIONS.slice(); saveLocations(); renderSettings();
+    toast('Locations reset to default.');
+  });
+  ['setName','setUnit','setPhone'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', e=>{
+      const key = id==='setName'?'name':id==='setUnit'?'unit':'phone';
+      reporter[key] = e.target.value;
+      saveReporter();
+    });
+  });
+}
+
+/* ============================================================
+   MISC
+   ============================================================ */
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+let toastTimer;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 2600);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function renderAll(fresh){
+  renderStatus();
+  renderControlPanel();
+  renderReport();
+  renderRecords();
+}
+(async function init(){
+  tickClock();
+  await loadAll();
+  renderAll();
+  renderSettings();
+  bindSettings();
+})();
+</script>
+</body>
+</html>
